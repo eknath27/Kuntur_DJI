@@ -1,31 +1,46 @@
 from djitellopy import Tello
+import cv2
 import time
+import threading
 
 class DroneController:
     def __init__(self):
         self.tello = Tello()
+        self.video_writer = None
+        self.recording = False
+
+    def connect(self):
         self.tello.connect()
-
-    def takeoff(self):
-        self.tello.takeoff()
-        return {"message": "Dron despegó"}
-
-    def land(self):
-        self.tello.land()
-        return {"message": "Dron aterrizó"}
-
-    def execute_route(self, route):
-        self.takeoff()
-        for _ in route:  # Simulación de ruta
-            self.tello.move_forward(50)
-            time.sleep(2)
-        self.land()
-        return {"message": "Ruta completada"}
-
-    def start_video(self):
         self.tello.streamon()
-        return self.tello.get_frame_read().frame
 
-    def stop_video(self):
-        self.tello.streamoff()
-        return {"message": "Grabación detenida"}
+    def start_recording(self, filename="videos/output.avi"):
+        frame_read = self.tello.get_frame_read()
+        self.video_writer = cv2.VideoWriter(
+            filename, cv2.VideoWriter_fourcc(*"XVID"), 30, (frame_read.frame.shape[1], frame_read.frame.shape[0])
+        )
+        self.recording = True
+
+        def record():
+            while self.recording:
+                frame = frame_read.frame
+                self.video_writer.write(frame)
+                time.sleep(1 / 30)
+
+        threading.Thread(target=record, daemon=True).start()
+
+    def stop_recording(self):
+        self.recording = False
+        if self.video_writer:
+            self.video_writer.release()
+
+    def follow_route(self, route):
+        self.tello.takeoff()
+        self.start_recording()
+
+        for point in route.points:
+            print(f"Moviendo a latitud {point.latitude}, longitud {point.longitude}")
+            self.tello.move_forward(20)  # Simulación del movimiento
+
+        self.stop_recording()
+        self.tello.land()
+

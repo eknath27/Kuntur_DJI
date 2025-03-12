@@ -1,11 +1,9 @@
 from fastapi import FastAPI
-from app.routes import drone_routes, video_routes
+from app.routes import drone_routes
 
-app = FastAPI(title="DJI Tello Surveillance API")
-
-app.include_router(drone_routes.router, prefix="/drone")
-app.include_router(video_routes.router, prefix="/video")
+app = FastAPI()
+app.include_router(drone_routes.router)
 
 @app.get("/")
-def read_root():
-    return {"message": "API para control de vigilancia con DJI Tello"}
+async def root():
+    return {"message": "Sistema de vigilancia con DJI Tello"}
